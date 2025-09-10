@@ -1,0 +1,178 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Professional Admin Dashboard Design System */
+
+@layer base {
+  :root {
+    /* Brand Colors - Orange Theme */
+    --background: 35 100% 98%;
+    --foreground: 20 25% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 20 25% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 25% 15%;
+
+    --primary: 28 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --primary-dark: 28 100% 40%;
+
+    --secondary: 35 20% 92%;
+    --secondary-foreground: 20 25% 25%;
+
+    --muted: 35 15% 95%;
+    --muted-foreground: 30 10% 55%;
+
+    --accent: 32 100% 96%;
+    --accent-foreground: 28 100% 50%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 35 15% 88%;
+    --input: 35 15% 92%;
+    --ring: 28 100% 50%;
+
+    --radius: 0.75rem;
+
+    /* Status Colors */
+    --status-high: 0 84% 60%;
+    --status-medium: 38 92% 50%;
+    --status-low: 142 76% 36%;
+    --status-critical: 348 83% 47%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-dark)));
+    --gradient-card: linear-gradient(180deg, hsl(var(--card)), hsl(35 15% 98%));
+    
+    /* Shadows */
+    --shadow-card: 0 4px 6px -1px hsl(215 25% 15% / 0.1), 0 2px 4px -1px hsl(215 25% 15% / 0.06);
+    --shadow-elevated: 0 20px 25px -5px hsl(215 25% 15% / 0.1), 0 10px 10px -5px hsl(215 25% 15% / 0.04);
+    
+    /* Transitions */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark {
+    --background: 215 25% 12%;
+    --foreground: 215 15% 92%;
+
+    --card: 215 25% 15%;
+    --card-foreground: 215 15% 92%;
+
+    --popover: 215 25% 15%;
+    --popover-foreground: 215 15% 92%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 215 25% 12%;
+    --primary-dark: 217 91% 45%;
+
+    --secondary: 215 25% 20%;
+    --secondary-foreground: 215 15% 85%;
+
+    --muted: 215 25% 18%;
+    --muted-foreground: 215 10% 65%;
+
+    --accent: 215 25% 20%;
+    --accent-foreground: 217 91% 60%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 215 15% 92%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 215 25% 12%;
+
+    --success: 142 76% 36%;
+    --success-foreground: 215 15% 92%;
+
+    --border: 215 25% 22%;
+    --input: 215 25% 20%;
+    --ring: 217 91% 60%;
+
+    --shadow-card: 0 4px 6px -1px hsl(0 0% 0% / 0.3), 0 2px 4px -1px hsl(0 0% 0% / 0.2);
+    --shadow-elevated: 0 20px 25px -5px hsl(0 0% 0% / 0.4), 0 10px 10px -5px hsl(0 0% 0% / 0.3);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  /* Professional Scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+}
+
+@layer components {
+  /* Status Badge Variants */
+  .status-critical {
+    @apply bg-red-500/10 text-red-700 border border-red-500/20;
+  }
+  
+  .status-high {
+    @apply bg-orange-500/10 text-orange-700 border border-orange-500/20;
+  }
+  
+  .status-medium {
+    @apply bg-yellow-500/10 text-yellow-700 border border-yellow-500/20;
+  }
+  
+  .status-low {
+    @apply bg-green-500/10 text-green-700 border border-green-500/20;
+  }
+
+  .status-open {
+    @apply bg-blue-500/10 text-blue-700 border border-blue-500/20;
+  }
+
+  .status-in-progress {
+    @apply bg-purple-500/10 text-purple-700 border border-purple-500/20;
+  }
+
+  .status-resolved {
+    @apply bg-green-500/10 text-green-700 border border-green-500/20;
+  }
+
+  .status-closed {
+    @apply bg-gray-500/10 text-gray-700 border border-gray-500/20;
+  }
+
+  /* Professional Card */
+  .card-professional {
+    @apply bg-gradient-to-br from-card to-card border border-border rounded-lg shadow-[var(--shadow-card)] backdrop-blur-sm;
+  }
+
+  /* Elevated Card */
+  .card-elevated {
+    @apply bg-gradient-to-br from-card to-card border border-border rounded-lg shadow-[var(--shadow-elevated)] backdrop-blur-sm;
+  }
+}
