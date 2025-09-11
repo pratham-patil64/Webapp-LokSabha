@@ -29,7 +29,7 @@ interface Complaint {
   imageUrl?: string;
   location: { latitude: number; longitude: number };
   severity: 'low' | 'medium' | 'high';
-  status: 'pending' | 'in progress' | 'resolved' | 'Not BMC' | 'Acknowledged';
+  status: 'Pending' | 'in progress' | 'Resolved' | 'Not BMC' | 'Acknowledged';
   userId: string;
   userName: string;
   priorityScore?: number;
@@ -84,9 +84,9 @@ const Dashboard: React.FC = () => {
       // Explicitly calculate and set stats for real-time updates
       setDashboardStats({
         totalComplaints: querySnapshot.size,
-        openComplaints: complaintsData.filter(c => c.status === 'pending').length,
+        openComplaints: complaintsData.filter(c => c.status === 'Pending').length,
         inProgress: complaintsData.filter(c => c.status === 'in progress').length,
-        resolved: complaintsData.filter(c => c.status === 'resolved').length,
+        resolved: complaintsData.filter(c => c.status === 'Resolved').length,
         criticalCount: complaintsData.filter(c => c.severity === 'high').length,
       });
 
@@ -200,6 +200,8 @@ const Dashboard: React.FC = () => {
   ].filter(item => item.value > 0);
 
   // Sentiment Analysis Processing
+  const sentimentAnalyzer = new Sentiment();
+
   const sentimentAnalysis = posts.reduce((acc, post) => {
     const result = sentimentAnalyzer.analyze(post.text);
     if (result.score > 0) acc.positive++;
@@ -382,4 +384,3 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
-

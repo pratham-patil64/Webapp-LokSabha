@@ -111,8 +111,6 @@ const ComplaintTable: React.FC = () => {
   const severities = ['low', 'medium', 'high'];
 
   const handleStatusChange = async (complaintId: string, newStatus: Complaint['status']) => {
-      if (user?.role !== 'king') return;
-      
       setIsUpdating(complaintId);
       const complaintRef = doc(db, 'complaints', complaintId);
       try {
@@ -372,7 +370,7 @@ const ComplaintTable: React.FC = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                        {user?.role === 'king' ? (
+                        {(user?.role === 'king' || user?.role === 'god') ? (
                             <Select 
                                 value={complaint.status} 
                                 onValueChange={(value) => handleStatusChange(complaint.id, value as Complaint['status'])}
