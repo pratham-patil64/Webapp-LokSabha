@@ -1,16 +1,20 @@
+// src/components/Dashboard.tsx
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, Area, AreaChart
 } from 'recharts';
 import {
   TrendingUp, AlertTriangle, CheckCircle, Clock,
+<<<<<<< Updated upstream
   FileText, BarChart3, Users, Settings, Loader2, Smile, Frown, Meh, 
   KeyRound, Crown, Shield, Zap, Star, Activity, ChevronRight, 
   UserCheck, MapPin, Calendar, Eye, Edit3, Trash2, Award
+=======
+  FileText, BarChart3, Users, Settings, Loader2, Smile, Frown, Meh, KeyRound, Map as MapIcon, Lock
+>>>>>>> Stashed changes
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { collection, onSnapshot, query, Timestamp, where, getDocs, doc, updateDoc, setDoc } from 'firebase/firestore';
@@ -20,6 +24,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
+<<<<<<< Updated upstream
+=======
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import HeatmapLayer from './HeatmapLayer';
+>>>>>>> Stashed changes
 
 // --- INTERFACES ---
 interface Complaint {
@@ -52,6 +61,97 @@ interface KingUser {
     }
 }
 
+// Helper component to control map interactions
+const MapInteractionController = ({ isActive }: { isActive: boolean }) => {
+    const map = useMap();
+    useEffect(() => {
+        if (isActive) {
+            map.dragging.enable();
+            map.scrollWheelZoom.enable();
+        } else {
+            map.dragging.disable();
+            map.scrollWheelZoom.disable();
+        }
+    }, [isActive, map]);
+    return null;
+}
+
+const ComplaintHeatmap = ({ complaints }: { complaints: Complaint[] }) => {
+    const [isMapActive, setIsMapActive] = useState(false);
+    const unresolvedComplaints = complaints.filter(c => c.status !== 'Resolved' && c.location);
+    const heatmapData: [number, number, number][] = complaints.filter(c => c.location).map(c => [c.location.latitude, c.location.longitude, 1]);
+
+    return (
+      <Card className="card-professional">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MapIcon className="w-5 h-5" />
+            Complaint Hotspots
+          </CardTitle>
+          <CardDescription>
+            A heatmap of complaint density and unresolved issues.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="relative rounded-lg overflow-hidden" style={{ height: '400px', width: '100%' }}>
+            {/* Overlay to activate the map */}
+            {!isMapActive && (
+              <div
+                className="absolute inset-0 z-[1000] flex items-center justify-center bg-background/60 backdrop-blur-sm cursor-pointer"
+                onClick={() => setIsMapActive(true)}
+              >
+                <div className="text-center p-4 bg-secondary text-secondary-foreground rounded-lg shadow-lg">
+                    <p className="font-semibold">Click to activate map</p>
+                    <p className="text-xs">Once activated, you can scroll and pan.</p>
+                </div>
+              </div>
+            )}
+
+            {/* Button to deactivate the map */}
+            {isMapActive && (
+                <Button
+                    variant="secondary"
+                    size="sm"
+                    className="absolute top-2 right-2 z-[1000] shadow-lg"
+                    onClick={() => setIsMapActive(false)}
+                >
+                    <Lock className="w-4 h-4 mr-2" />
+                    Lock Map
+                </Button>
+            )}
+
+            <MapContainer
+              center={[19.0760, 72.8777]}
+              zoom={12}
+              scrollWheelZoom={false} // Initially disabled
+              dragging={false} // Initially disabled
+              style={{ height: '100%', width: '100%' }}
+            >
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+              />
+              <HeatmapLayer points={heatmapData} />
+
+              {unresolvedComplaints.map(complaint => (
+                <Marker key={complaint.id} position={[complaint.location.latitude, complaint.location.longitude]}>
+                  <Popup>
+                    <b>{complaint.category}</b><br />
+                    {complaint.description}<br />
+                    Status: {complaint.status}
+                  </Popup>
+                </Marker>
+              ))}
+              {/* Add the controller to the map */}
+              <MapInteractionController isActive={isMapActive} />
+            </MapContainer>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+
 const sentimentAnalyzer = new Sentiment();
 
 const Dashboard: React.FC = () => {
@@ -64,8 +164,12 @@ const Dashboard: React.FC = () => {
   const [categoryAssignments, setCategoryAssignments] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [isAssigning, setIsAssigning] = useState<string | null>(null);
+<<<<<<< Updated upstream
   const [selectedKingCard, setSelectedKingCard] = useState<string | null>(null);
   
+=======
+
+>>>>>>> Stashed changes
   const [dashboardStats, setDashboardStats] = useState({
     totalComplaints: 0,
     openComplaints: 0,
@@ -118,7 +222,7 @@ const Dashboard: React.FC = () => {
             setCategoryAssignments(assignments);
         });
     }
-    
+
     // Combined loading state
     Promise.all([new Promise(res => onSnapshot(complaintsQuery, res)), new Promise(res => onSnapshot(postsQuery, res))])
       .then(() => setLoading(false))
@@ -172,7 +276,7 @@ const Dashboard: React.FC = () => {
               // Handle new assignment
               const kingToAssign = kings.find(k => k.id === kingId);
               if (!kingToAssign) throw new Error("King not found");
-              
+
               const newKingRef = doc(db, "users", kingId);
               await updateDoc(newKingRef, { domain: { genre: category } });
 
@@ -337,6 +441,7 @@ const Dashboard: React.FC = () => {
         />
       </div>
 
+<<<<<<< Updated upstream
       {/* Enhanced Charts Grid */}
       <div className="grid gap-8 lg:grid-cols-5">
         {/* Enhanced Complaints by Category */}
@@ -347,6 +452,19 @@ const Dashboard: React.FC = () => {
                 <BarChart3 className="w-5 h-5 text-primary" />
               </div>
               Complaints Distribution
+=======
+      {/* Complaint Heatmap */}
+      <ComplaintHeatmap complaints={complaints} />
+
+      {/* Charts Grid */}
+      <div className="grid gap-6 lg:grid-cols-5">
+        {/* Complaints by Category */}
+        <Card className="card-professional lg:col-span-3">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5" />
+              Complaints by Category
+>>>>>>> Stashed changes
             </CardTitle>
             <CardDescription>Category-wise breakdown of all complaints</CardDescription>
           </CardHeader>
