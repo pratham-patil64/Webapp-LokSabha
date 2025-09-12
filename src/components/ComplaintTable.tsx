@@ -27,12 +27,30 @@ export interface Complaint {
   status: 'Pending' | 'in progress' | 'Resolved' | 'Not BMC' | 'Acknowledged';
   userId: string;
   userName: string;
+  supporters?: string[];
   priorityScore?: number;
 }
 
 
 type SortField = keyof Complaint | 'priorityScore';
 type SortOrder = 'asc' | 'desc';
+
+// --- Priority Score Configuration ---
+const categoryWeights: { [key: string]: number } = {
+  'water supply': 5,
+  'sanitation': 4,
+  'lighting': 3,
+  'street maintance': 2,
+  'others': 1,
+};
+
+const severityWeights = {
+  'high': 30,   // Hazard
+  'medium': 15,
+  'low': 5,
+};
+
+const CROWD_WEIGHT = 5; // Points per join/supporter
 
 const ComplaintTable: React.FC = () => {
   const { user } = useAuth();
@@ -42,7 +60,7 @@ const ComplaintTable: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [severityFilter, setSeverityFilter] = useState('all');
-  const [sortField, setSortField] = useState<SortField>('createdAt');
+  const [sortField, setSortField] = useState<SortField>('priorityScore');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -83,21 +101,29 @@ const ComplaintTable: React.FC = () => {
       const unsubscribe = onSnapshot(complaintsQuery, (snapshot) => {
         const complaintsData = snapshot.docs.map(doc => {
             const data = doc.data();
-            let priorityScore;
+            let priorityScore = 0;
             
-            // Set priority score to 0 if resolved
-            if (data.status === 'Resolved') {
-              priorityScore = 0;
-            } else {
-              const severityScore = { 'high': 3, 'medium': 2, 'low': 1 }[data.severity] || 1;
-              const timeSince = data.createdAt ? (new Date().getTime() - data.createdAt.toDate().getTime()) / 3600000 : 0; // hours
-              priorityScore = Math.min(100, Math.round(severityScore * 20 + timeSince / 24 * 5));
+            if (data.status !== 'Resolved') {
+              // 1. Category Weight & Hazard
+              const categoryWeight = categoryWeights[data.category?.toLowerCase()] || categoryWeights['others'];
+              const hazardScore = severityWeights[data.severity] || 0;
+              let baseScore = (categoryWeight * 5) + hazardScore;
+
+              // 2. Crowd Weight
+              const crowdScore = (data.supporters?.length || 0) * CROWD_WEIGHT;
+
+              // 3. Staleness/Recency
+              const hoursSinceCreation = data.createdAt ? (new Date().getTime() - data.createdAt.toDate().getTime()) / 3600000 : 0;
+              const stalenessScore = Math.floor(hoursSinceCreation / 24) * 2; // +2 points for every 24 hours
+
+              // Final Calculation
+              priorityScore = baseScore + crowdScore + stalenessScore;
             }
 
             return {
                 id: doc.id,
                 ...data,
-                priorityScore
+                priorityScore: Math.min(100, Math.round(priorityScore)) // Cap score at 100
             } as Complaint
         });
         setComplaints(complaintsData);

@@ -2,19 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, Area, AreaChart
+  PieChart, Pie, Cell
 } from 'recharts';
 import {
   TrendingUp, AlertTriangle, CheckCircle, Clock,
-<<<<<<< Updated upstream
-  FileText, BarChart3, Users, Settings, Loader2, Smile, Frown, Meh, 
-  KeyRound, Crown, Shield, Zap, Star, Activity, ChevronRight, 
-  UserCheck, MapPin, Calendar, Eye, Edit3, Trash2, Award
-=======
-  FileText, BarChart3, Users, Settings, Loader2, Smile, Frown, Meh, KeyRound, Map as MapIcon, Lock
->>>>>>> Stashed changes
+  FileText, BarChart3, Users, Settings, Loader2, Smile, Frown, Meh, KeyRound, Map as MapIcon, Lock, Crown, Shield, Activity, ChevronRight, UserCheck, MapPin, Award
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { collection, onSnapshot, query, Timestamp, where, getDocs, doc, updateDoc, setDoc } from 'firebase/firestore';
@@ -24,11 +19,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
-<<<<<<< Updated upstream
-=======
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import HeatmapLayer from './HeatmapLayer';
->>>>>>> Stashed changes
 
 // --- INTERFACES ---
 interface Complaint {
@@ -164,12 +156,9 @@ const Dashboard: React.FC = () => {
   const [categoryAssignments, setCategoryAssignments] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [isAssigning, setIsAssigning] = useState<string | null>(null);
-<<<<<<< Updated upstream
   const [selectedKingCard, setSelectedKingCard] = useState<string | null>(null);
   
-=======
 
->>>>>>> Stashed changes
   const [dashboardStats, setDashboardStats] = useState({
     totalComplaints: 0,
     openComplaints: 0,
@@ -283,7 +272,7 @@ const Dashboard: React.FC = () => {
               setCategoryAssignments(prev => ({ ...prev, [category]: kingId }));
               toast({
                   title: "Assignment Successful",
-                  description: `${category} category assigned to ${kingToAssign.email}.`,
+                  description: `${category} category assigned to ${kingToAssign.username}.`,
               });
           }
       } catch (error) {
@@ -441,7 +430,9 @@ const Dashboard: React.FC = () => {
         />
       </div>
 
-<<<<<<< Updated upstream
+      {/* Complaint Heatmap */}
+      <ComplaintHeatmap complaints={complaints} />
+
       {/* Enhanced Charts Grid */}
       <div className="grid gap-8 lg:grid-cols-5">
         {/* Enhanced Complaints by Category */}
@@ -452,19 +443,6 @@ const Dashboard: React.FC = () => {
                 <BarChart3 className="w-5 h-5 text-primary" />
               </div>
               Complaints Distribution
-=======
-      {/* Complaint Heatmap */}
-      <ComplaintHeatmap complaints={complaints} />
-
-      {/* Charts Grid */}
-      <div className="grid gap-6 lg:grid-cols-5">
-        {/* Complaints by Category */}
-        <Card className="card-professional lg:col-span-3">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5" />
-              Complaints by Category
->>>>>>> Stashed changes
             </CardTitle>
             <CardDescription>Category-wise breakdown of all complaints</CardDescription>
           </CardHeader>
@@ -622,9 +600,6 @@ const Dashboard: React.FC = () => {
                           </div>
                           <div>
                             <p className="font-semibold text-sm">{king.username}</p>
-                            <p className="text-xs text-muted-foreground truncate max-w-[140px]">
-                              {king.email}
-                            </p>
                           </div>
                         </div>
                         <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform duration-300 ${
@@ -713,7 +688,7 @@ const Dashboard: React.FC = () => {
                               {assignedKing && (
                                 <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
                                   <UserCheck className="w-3 h-3 text-primary" />
-                                  <span className="text-xs font-medium text-primary">{assignedKing.email}</span>
+                                  <span className="text-xs font-medium text-primary">{assignedKing.username}</span>
                                 </div>
                               )}
                               
@@ -750,12 +725,7 @@ const Dashboard: React.FC = () => {
                                     >
                                       <div className="flex items-center gap-2">
                                         <Crown className="w-3 h-3 text-primary" />
-                                        <div>
-                                          <span className="font-medium">{king.username}</span>
-                                          <span className="text-xs text-muted-foreground ml-2">
-                                            {king.email}
-                                          </span>
-                                        </div>
+                                        <span className="font-medium">{king.username}</span>
                                       </div>
                                     </SelectItem>
                                   ))}
@@ -839,7 +809,7 @@ const Dashboard: React.FC = () => {
       )}
 
       {/* Custom Styles for Grid Pattern */}
-      <style jsx>{`
+      <style>{`
         .bg-grid-pattern {
           background-image: radial-gradient(circle at 1px 1px, hsl(var(--muted-foreground)) 1px, transparent 0);
           background-size: 20px 20px;
@@ -850,3 +820,4 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
+
