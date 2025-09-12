@@ -4,9 +4,13 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+
+// Page Imports
 import Login from "@/components/Login";
 import Dashboard from "@/components/Dashboard";
 import ComplaintTable from "@/components/ComplaintTable";
+import ProfilePage from "@/components/ProfilePage";
+import LeaderboardPage from "@/components/LeaderboardPage";
 import Layout from "@/components/Layout";
 import NotFound from "./pages/NotFound";
 
@@ -29,6 +33,7 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to={user?.role === 'god' ? '/dashboard' : '/complaints'} />} />
       <Route path="/" element={<Navigate to={isAuthenticated ? (user?.role === 'god' ? '/dashboard' : '/complaints') : '/login'} />} />
+      
       <Route path="/dashboard" element={
         <ProtectedRoute>
           <GodOnlyRoute>
@@ -36,11 +41,27 @@ const AppRoutes = () => {
           </GodOnlyRoute>
         </ProtectedRoute>
       } />
+      
+      <Route path="/leaderboard" element={
+        <ProtectedRoute>
+          <GodOnlyRoute>
+            <LeaderboardPage />
+          </GodOnlyRoute>
+        </ProtectedRoute>
+      } />
+
       <Route path="/complaints" element={
         <ProtectedRoute>
           <ComplaintTable />
         </ProtectedRoute>
       } />
+
+      <Route path="/profile" element={
+        <ProtectedRoute>
+          <ProfilePage />
+        </ProtectedRoute>
+      } />
+      
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

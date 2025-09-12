@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { 
   LogOut, Settings, User, Shield, Crown, 
-  LayoutDashboard, FileText 
+  LayoutDashboard, FileText, Trophy
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -28,18 +28,36 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     });
   };
 
+  // --- MODIFICATION START ---
+  // Reordered the navigation items array
   const navigationItems = [
-    ...(user?.role === 'god' ? [{
-      label: 'Dashboard',
-      path: '/dashboard',
-      icon: LayoutDashboard
-    }] : []),
+    // God-only items
+    ...(user?.role === 'god' ? [
+      {
+        label: 'Dashboard',
+        path: '/dashboard',
+        icon: LayoutDashboard
+      }
+    ] : []),
+    
+    // Items for all roles
     {
       label: 'Complaints',
       path: '/complaints',
       icon: FileText
-    }
+    },
+
+    // God-only items (continued)
+    ...(user?.role === 'god' ? [
+      {
+        label: 'Leaderboard',
+        path: '/leaderboard',
+        icon: Trophy
+      }
+    ] : [])
   ];
+  // --- MODIFICATION END ---
+
 
   const isActivePath = (path: string) => location.pathname === path;
 
@@ -48,7 +66,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Top Navigation */}
       <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          {/* Logo and Navigation */}
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
@@ -63,8 +80,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <p className="text-xs text-muted-foreground capitalize">{user?.role} Access</p>
               </div>
             </div>
-
-            {/* Navigation Links */}
             <nav className="hidden md:flex items-center gap-1">
               {navigationItems.map(item => {
                 const Icon = item.icon;
@@ -73,11 +88,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     key={item.path}
                     variant={isActivePath(item.path) ? "default" : "ghost"}
                     onClick={() => navigate(item.path)}
-                    className={`gap-2 ${
-                      isActivePath(item.path) 
-                        ? "bg-gradient-primary text-primary-foreground" 
-                        : "hover:bg-accent"
-                    }`}
+                    className={`gap-2 ${isActivePath(item.path) ? "bg-gradient-primary text-primary-foreground" : "hover:bg-accent"}`}
                   >
                     <Icon className="w-4 h-4" />
                     {item.label}
@@ -93,7 +104,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10">
                   <AvatarFallback className="bg-gradient-primary text-primary-foreground">
-                    {user?.username.charAt(0).toUpperCase()}
+                    {user?.username?.charAt(0).toUpperCase() || 'A'}
                   </AvatarFallback>
                 </Avatar>
               </Button>
@@ -108,11 +119,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </div>
               </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="cursor-pointer">
+              <DropdownMenuItem onSelect={() => navigate('/profile')} className="cursor-pointer">
                 <User className="mr-2 h-4 w-4" />
                 Profile
               </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer">
+              <DropdownMenuItem disabled className="cursor-not-allowed">
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
               </DropdownMenuItem>
@@ -138,11 +149,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   variant={isActivePath(item.path) ? "default" : "ghost"}
                   size="sm"
                   onClick={() => navigate(item.path)}
-                  className={`gap-2 whitespace-nowrap ${
-                    isActivePath(item.path) 
-                      ? "bg-gradient-primary text-primary-foreground" 
-                      : "hover:bg-accent"
-                  }`}
+                  className={`gap-2 whitespace-nowrap ${isActivePath(item.path) ? "bg-gradient-primary text-primary-foreground" : "hover:bg-accent"}`}
                 >
                   <Icon className="w-4 h-4" />
                   {item.label}
@@ -162,3 +169,4 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 };
 
 export default Layout;
+
