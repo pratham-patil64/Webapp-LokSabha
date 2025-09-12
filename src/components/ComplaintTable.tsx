@@ -6,19 +6,20 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
-  Search, Filter, Download, RefreshCw, 
+  Search, Filter, Download, 
   ArrowUpDown, ArrowUp, ArrowDown, Loader2 
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import ComplaintDetailModal from './ComplaintDetailModal';
 import { db } from '../../firebase';
-import { collection, onSnapshot, query, where, doc, getDoc, Timestamp, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, getDoc, Timestamp, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 // Define the structure of a complaint from Firestore
 export interface Complaint {
   id: string;
   category: string;
   createdAt: Timestamp;
+  resolvedAt?: Timestamp;
   description: string;
   imageUrl?: string;
   location: { latitude: number; longitude: number };
@@ -66,10 +67,8 @@ const ComplaintTable: React.FC = () => {
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists() && userDoc.data().domain) {
           const domain = userDoc.data().domain;
-          // For now, we assume domain has a 'genre' which maps to 'category'
           complaintsQuery = query(collection(db, 'complaints'), where('category', '==', domain.genre));
         } else {
-          // King has no domain, show no complaints
           setComplaints([]);
           setLoading(false);
           return;
@@ -84,10 +83,16 @@ const ComplaintTable: React.FC = () => {
       const unsubscribe = onSnapshot(complaintsQuery, (snapshot) => {
         const complaintsData = snapshot.docs.map(doc => {
             const data = doc.data();
-             // Priority score calculation
-            const severityScore = { 'high': 3, 'medium': 2, 'low': 1 }[data.severity] || 1;
-            const timeSince = data.createdAt ? (new Date().getTime() - data.createdAt.toDate().getTime()) / 3600000 : 0; // hours
-            const priorityScore = Math.min(100, Math.round(severityScore * 20 + timeSince / 24 * 5));
+            let priorityScore;
+            
+            // Set priority score to 0 if resolved
+            if (data.status === 'Resolved') {
+              priorityScore = 0;
+            } else {
+              const severityScore = { 'high': 3, 'medium': 2, 'low': 1 }[data.severity] || 1;
+              const timeSince = data.createdAt ? (new Date().getTime() - data.createdAt.toDate().getTime()) / 3600000 : 0; // hours
+              priorityScore = Math.min(100, Math.round(severityScore * 20 + timeSince / 24 * 5));
+            }
 
             return {
                 id: doc.id,
@@ -114,7 +119,13 @@ const ComplaintTable: React.FC = () => {
       setIsUpdating(complaintId);
       const complaintRef = doc(db, 'complaints', complaintId);
       try {
-          await updateDoc(complaintRef, { status: newStatus });
+          const updateData: { status: string; resolvedAt?: any } = { status: newStatus };
+          
+          if (newStatus === 'Resolved') {
+              updateData.resolvedAt = serverTimestamp(); // Add resolved timestamp
+          }
+          
+          await updateDoc(complaintRef, updateData);
       } catch (error) {
           console.error("Error updating status: ", error);
       } finally {
@@ -142,9 +153,14 @@ const ComplaintTable: React.FC = () => {
         const aVal = a[sortField];
         const bVal = b[sortField];
         
-        if (sortField === 'createdAt') {
-            const aDate = a.createdAt?.toDate()?.getTime() || 0;
-            const bDate = b.createdAt?.toDate()?.getTime() || 0;
+        if (sortField === 'createdAt' || sortField === 'resolvedAt') {
+            const aDate = a[sortField] ? (a[sortField] as Timestamp).toDate().getTime() : null;
+            const bDate = b[sortField] ? (b[sortField] as Timestamp).toDate().getTime() : null;
+        
+            if (aDate === bDate) return 0;
+            if (aDate === null) return 1;
+            if (bDate === null) return -1;
+            
             return sortOrder === 'asc' ? aDate - bDate : bDate - aDate;
         }
 
@@ -175,10 +191,14 @@ const ComplaintTable: React.FC = () => {
 
   const getSeverityBadgeClass = (severity: string) => {
     switch (severity?.toLowerCase()) {
-      case 'high': return 'status-high';
-      case 'medium': return 'status-medium';
-      case 'low': return 'status-low';
-      default: return 'status-low';
+      case 'high':
+        return 'bg-red-500/20 text-red-500 hover:bg-red-500/30 border border-red-500/30';
+      case 'medium':
+        return 'bg-orange-500/20 text-orange-500 hover:bg-orange-500/30 border border-orange-500/30';
+      case 'low':
+        return 'bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 border border-yellow-500/30';
+      default:
+        return 'bg-gray-500/20 text-gray-500 hover:bg-gray-500/30 border border-gray-500/30';
     }
   };
 
@@ -341,8 +361,9 @@ const ComplaintTable: React.FC = () => {
                   <TableHead><SortHeader field="description">Details</SortHeader></TableHead>
                   {user?.role === 'god' && <TableHead><SortHeader field="category">Category</SortHeader></TableHead>}
                   <TableHead><SortHeader field="severity">Severity</SortHeader></TableHead>
-                  <TableHead><SortHeader field="createdAt">Time</SortHeader></TableHead>
                   <TableHead><SortHeader field="priorityScore">Priority</SortHeader></TableHead>
+                  <TableHead><SortHeader field="createdAt">Created On</SortHeader></TableHead>
+                  <TableHead><SortHeader field="resolvedAt">Resolved On</SortHeader></TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -360,7 +381,6 @@ const ComplaintTable: React.FC = () => {
                       <TableCell><Badge variant="outline" className="capitalize">{complaint.category}</Badge></TableCell>
                     )}
                     <TableCell><Badge className={`text-xs capitalize ${getSeverityBadgeClass(complaint.severity)}`}>{complaint.severity}</Badge></TableCell>
-                    <TableCell className="text-sm">{complaint.createdAt.toDate().toLocaleDateString()}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{complaint.priorityScore}</span>
@@ -368,6 +388,10 @@ const ComplaintTable: React.FC = () => {
                           <div className="h-2 rounded-full bg-gradient-primary" style={{ width: `${complaint.priorityScore}%` }}/>
                         </div>
                       </div>
+                    </TableCell>
+                    <TableCell className="text-sm">{complaint.createdAt.toDate().toLocaleDateString()}</TableCell>
+                    <TableCell className="text-sm">
+                      {complaint.resolvedAt ? complaint.resolvedAt.toDate().toLocaleDateString() : '—'}
                     </TableCell>
                     <TableCell>
                         {(user?.role === 'king' || user?.role === 'god') ? (

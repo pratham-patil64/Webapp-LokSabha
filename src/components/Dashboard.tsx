@@ -4,21 +4,22 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell
+  PieChart, Pie, Cell, LineChart, Line, Area, AreaChart
 } from 'recharts';
 import {
   TrendingUp, AlertTriangle, CheckCircle, Clock,
-  FileText, BarChart3, Users, Settings, Loader2, Smile, Frown, Meh, KeyRound
+  FileText, BarChart3, Users, Settings, Loader2, Smile, Frown, Meh, 
+  KeyRound, Crown, Shield, Zap, Star, Activity, ChevronRight, 
+  UserCheck, MapPin, Calendar, Eye, Edit3, Trash2, Award
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { collection, onSnapshot, query, Timestamp, where, getDocs, doc, updateDoc, setDoc } from 'firebase/firestore';
-import { db } from '../../firebase'; // Make sure this path is correct
+import { db } from '../../firebase';
 import Sentiment from 'sentiment';
 import { useAuth } from '@/contexts/AuthContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
-
 
 // --- INTERFACES ---
 interface Complaint {
@@ -63,6 +64,7 @@ const Dashboard: React.FC = () => {
   const [categoryAssignments, setCategoryAssignments] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [isAssigning, setIsAssigning] = useState<string | null>(null);
+  const [selectedKingCard, setSelectedKingCard] = useState<string | null>(null);
   
   const [dashboardStats, setDashboardStats] = useState({
     totalComplaints: 0,
@@ -71,7 +73,6 @@ const Dashboard: React.FC = () => {
     resolved: 0,
     criticalCount: 0,
   });
-
 
   // --- DATA FETCHING ---
   useEffect(() => {
@@ -154,7 +155,7 @@ const Dashboard: React.FC = () => {
 
           // Handle unassignment
           if (kingId === 'unassigned') {
-              if (currentKingId) { // Only update if there was a king assigned
+              if (currentKingId) {
                   const currentKingRef = doc(db, "users", currentKingId);
                   await updateDoc(currentKingRef, { domain: {} });
               }
@@ -200,8 +201,6 @@ const Dashboard: React.FC = () => {
   ].filter(item => item.value > 0);
 
   // Sentiment Analysis Processing
-  const sentimentAnalyzer = new Sentiment();
-
   const sentimentAnalysis = posts.reduce((acc, post) => {
     const result = sentimentAnalyzer.analyze(post.text);
     if (result.score > 0) acc.positive++;
@@ -216,169 +215,518 @@ const Dashboard: React.FC = () => {
     { name: 'Negative', value: sentimentAnalysis.negative, color: '#ef4444' },
   ].filter(item => item.value > 0);
 
-
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <div className="relative">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <div className="absolute inset-0 h-12 w-12 rounded-full border-2 border-primary/20 animate-pulse" />
+        </div>
       </div>
     );
   }
 
   // --- COMPONENTS ---
-  const StatCard = ({ title, value, icon: Icon, trend, color = "primary" }: {
+  const StatCard = ({ title, value, icon: Icon, trend, color = "primary", description }: {
     title: string;
     value: string | number;
     icon: React.ElementType;
     trend?: string;
     color?: string;
+    description?: string;
   }) => (
-    <Card className="card-professional hover:card-elevated transition-smooth cursor-pointer">
-      <CardContent className="p-6">
+    <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500 hover:-translate-y-2">
+      <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      <CardContent className="p-6 relative z-10">
         <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className="text-3xl font-bold">{value}</p>
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors duration-300">{title}</p>
+            <p className="text-3xl font-bold tracking-tight group-hover:scale-105 transform transition-transform duration-300">{value}</p>
             {trend && (
-              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1 group-hover:text-primary transition-colors duration-300">
                 <TrendingUp className="w-3 h-3" />
                 {trend}
               </p>
             )}
+            {description && (
+              <p className="text-xs text-muted-foreground/70">{description}</p>
+            )}
           </div>
-          <div className={`p-3 rounded-full bg-${color}/10`}>
-            <Icon className={`w-6 h-6 text-${color}`} />
+          <div className={`relative p-4 rounded-2xl bg-primary/10 group-hover:bg-primary/20 transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}>
+            <Icon className={`w-7 h-7 text-primary group-hover:text-primary transition-colors duration-300`} />
+            <div className="absolute inset-0 rounded-2xl bg-primary/5 animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           </div>
         </div>
       </CardContent>
     </Card>
   );
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">
-            Welcome back, God Admin. Here's your management overview.
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-card/95 backdrop-blur-sm border border-border/50 rounded-lg p-3 shadow-xl">
+          <p className="font-semibold text-foreground capitalize">{label}</p>
+          <p className="text-primary font-medium">
+            Count: {payload[0].value}
           </p>
         </div>
-        <Button onClick={() => navigate('/complaints')} className="bg-gradient-primary hover:opacity-90 transition-smooth">
-          <FileText className="w-4 h-4 mr-2" />
-          View All Complaints
-        </Button>
+      );
+    }
+    return null;
+  };
+
+  return (
+    <div className="space-y-8 min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      {/* Animated Header */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-8 border border-primary/10">
+        <div className="absolute inset-0 bg-grid-pattern opacity-5" />
+        <div className="relative z-10 flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-primary/20">
+                <Crown className="w-6 h-6 text-primary" />
+              </div>
+              <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                Divine Dashboard
+              </h1>
+            </div>
+            <p className="text-lg text-muted-foreground">
+              Welcome back, God Admin. Command your digital realm with supreme oversight.
+            </p>
+          </div>
+          <Button 
+            onClick={() => navigate('/complaints')} 
+            className="group relative overflow-hidden bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+          >
+            <div className="absolute inset-0 bg-white/20 translate-x-full group-hover:translate-x-0 transition-transform duration-500" />
+            <FileText className="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform duration-300" />
+            View All Complaints
+          </Button>
+        </div>
       </div>
 
-      {/* Stats Grid */}
+      {/* Enhanced Stats Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Total Complaints" value={dashboardStats.totalComplaints} icon={FileText} color="primary" />
-        <StatCard title="Pending" value={dashboardStats.openComplaints} icon={AlertTriangle} color="destructive" />
-        <StatCard title="In Progress" value={dashboardStats.inProgress} icon={Clock} color="warning" />
-        <StatCard title="Resolved" value={dashboardStats.resolved} icon={CheckCircle} color="success" />
+        <StatCard 
+          title="Total Complaints" 
+          value={dashboardStats.totalComplaints} 
+          icon={FileText} 
+          color="primary"
+          description="All registered complaints"
+        />
+        <StatCard 
+          title="Pending" 
+          value={dashboardStats.openComplaints} 
+          icon={AlertTriangle} 
+          color="destructive"
+          description="Awaiting attention"
+        />
+        <StatCard 
+          title="In Progress" 
+          value={dashboardStats.inProgress} 
+          icon={Clock} 
+          color="warning"
+          description="Being processed"
+        />
+        <StatCard 
+          title="Resolved" 
+          value={dashboardStats.resolved} 
+          icon={CheckCircle} 
+          color="success"
+          description="Successfully completed"
+        />
       </div>
 
-      {/* Charts Grid */}
-      <div className="grid gap-6 lg:grid-cols-5">
-        {/* Complaints by Category */}
-        <Card className="card-professional lg:col-span-3">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5" />
-              Complaints by Category
+      {/* Enhanced Charts Grid */}
+      <div className="grid gap-8 lg:grid-cols-5">
+        {/* Enhanced Complaints by Category */}
+        <Card className="group lg:col-span-3 border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-2xl transition-all duration-500">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-3 text-xl">
+              <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors duration-300">
+                <BarChart3 className="w-5 h-5 text-primary" />
+              </div>
+              Complaints Distribution
             </CardTitle>
+            <CardDescription>Category-wise breakdown of all complaints</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={complaintsByCategory}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} angle={-45} textAnchor="end" height={80} tickFormatter={(value) => typeof value === 'string' ? value.charAt(0).toUpperCase() + value.slice(1) : value} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}/>
-                <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+            <ResponsiveContainer width="100%" height={350}>
+              <BarChart data={complaintsByCategory} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                <defs>
+                  <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
+                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                <XAxis 
+                  dataKey="name" 
+                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} 
+                  angle={-45} 
+                  textAnchor="end" 
+                  height={80}
+                  tickFormatter={(value) => typeof value === 'string' ? value.charAt(0).toUpperCase() + value.slice(1) : value}
+                />
+                <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar 
+                  dataKey="count" 
+                  fill="url(#barGradient)" 
+                  radius={[6, 6, 0, 0]}
+                  className="hover:opacity-80 transition-opacity duration-200"
+                />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* Sentiment Analysis */}
-        <Card className="card-professional lg:col-span-2">
+        {/* Enhanced Sentiment Analysis */}
+        <Card className="group lg:col-span-2 border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-2xl transition-all duration-500">
           <CardHeader>
-            <CardTitle>Community Sentiment</CardTitle>
-            <CardDescription>
-              Sentiment analysis of community posts
-            </CardDescription>
+            <CardTitle className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors duration-300">
+                <Activity className="w-5 h-5 text-primary" />
+              </div>
+              Community Pulse
+            </CardTitle>
+            <CardDescription>Real-time sentiment analysis</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-               <PieChart>
-                <Pie data={sentimentChartData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={12}>
-                  {sentimentChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+            <ResponsiveContainer width="100%" height={320}>
+              <PieChart>
+                <Pie 
+                  data={sentimentChartData} 
+                  cx="50%" 
+                  cy="50%" 
+                  outerRadius={90}
+                  innerRadius={40}
+                  dataKey="value" 
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} 
+                  labelLine={false} 
+                  fontSize={12}
+                >
+                  {sentimentChartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} className="hover:opacity-80 transition-opacity duration-200" />
+                  ))}
                 </Pie>
-                <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}/>
+                <Tooltip content={<CustomTooltip />} />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
-       {/* New Row for Post Stats */}
+
+      {/* Enhanced Sentiment Stats */}
       <div className="grid gap-6 md:grid-cols-3">
-          <StatCard title="Positive Posts" value={sentimentAnalysis.positive} icon={Smile} color="success" />
-          <StatCard title="Neutral Posts" value={sentimentAnalysis.neutral} icon={Meh} color="gray" />
-          <StatCard title="Negative Posts" value={sentimentAnalysis.negative} icon={Frown} color="destructive" />
+        <StatCard 
+          title="Positive Sentiment" 
+          value={sentimentAnalysis.positive} 
+          icon={Smile} 
+          color="success"
+          description="Happy community members"
+        />
+        <StatCard 
+          title="Neutral Sentiment" 
+          value={sentimentAnalysis.neutral} 
+          icon={Meh} 
+          color="gray"
+          description="Balanced feedback"
+        />
+        <StatCard 
+          title="Negative Sentiment" 
+          value={sentimentAnalysis.negative} 
+          icon={Frown} 
+          color="destructive"
+          description="Concerns raised"
+        />
       </div>
         
-      {/* King Access Portal - God only */}
+      {/* Revolutionary King Access Portal */}
       {user?.role === 'god' && (
-        <Card className="card-professional">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <KeyRound className="w-5 h-5" />
-                    King Access Portal
-                </CardTitle>
-                <CardDescription>
-                    Assign complaint categories to King administrators.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Category</TableHead>
-                            <TableHead>Assigned King</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {uniqueCategories.map(category => (
-                            <TableRow key={category}>
-                                <TableCell className="font-medium capitalize">{category}</TableCell>
-                                <TableCell>
-                                    <Select
-                                        value={categoryAssignments[category] || 'unassigned'}
-                                        onValueChange={(kingId) => handleKingAssignment(category, kingId)}
-                                        disabled={isAssigning === category}
+        <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-card via-card to-primary/5">
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary/10 to-transparent rounded-full blur-3xl" />
+          
+          <CardHeader className="relative z-10 pb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="p-3 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 group-hover:from-primary/30 group-hover:to-primary/20 transition-all duration-500">
+                    <Crown className="w-7 h-7 text-primary" />
+                  </div>
+                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full animate-pulse" />
+                </div>
+                <div>
+                  <CardTitle className="text-2xl font-bold bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">
+                    Royal Command Center
+                  </CardTitle>
+                  <CardDescription className="text-base mt-1">
+                    Assign and manage your kingdom's administrative domains
+                  </CardDescription>
+                </div>
+              </div>
+              <Badge variant="secondary" className="px-3 py-1 bg-primary/10 text-primary border-primary/20">
+                <Shield className="w-3 h-3 mr-1" />
+                God Access
+              </Badge>
+            </div>
+          </CardHeader>
+
+          <CardContent className="relative z-10 space-y-6">
+            {/* Kings Overview Cards */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {kings.map((king) => {
+                const assignedCategory = Object.keys(categoryAssignments).find(cat => categoryAssignments[cat] === king.id);
+                const isSelected = selectedKingCard === king.id;
+                
+                return (
+                  <div
+                    key={king.id}
+                    onClick={() => setSelectedKingCard(isSelected ? null : king.id)}
+                    className={`group relative overflow-hidden rounded-2xl border transition-all duration-500 cursor-pointer ${
+                      isSelected 
+                        ? 'border-primary/50 bg-gradient-to-br from-primary/10 to-primary/5 shadow-lg scale-105' 
+                        : 'border-border/50 bg-gradient-to-br from-card to-muted/20 hover:border-primary/30 hover:shadow-md hover:scale-102'
+                    }`}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    
+                    <div className="relative z-10 p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-xl transition-all duration-300 ${
+                            assignedCategory 
+                              ? 'bg-primary/20 text-primary' 
+                              : 'bg-muted/50 text-muted-foreground'
+                          }`}>
+                            <Crown className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm">{king.username}</p>
+                            <p className="text-xs text-muted-foreground truncate max-w-[140px]">
+                              {king.email}
+                            </p>
+                          </div>
+                        </div>
+                        <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform duration-300 ${
+                          isSelected ? 'rotate-90' : 'group-hover:translate-x-1'
+                        }`} />
+                      </div>
+                      
+                      <div className={`transition-all duration-500 ${isSelected ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+                        <div className="pt-2 border-t border-border/30">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-3 h-3 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">
+                              {assignedCategory ? `Ruling ${assignedCategory}` : 'Awaiting domain'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between pt-1">
+                        <Badge 
+                          variant={assignedCategory ? "default" : "secondary"} 
+                          className={`text-xs transition-all duration-300 ${
+                            assignedCategory 
+                              ? 'bg-primary/20 text-primary border-primary/30' 
+                              : 'bg-muted/50 text-muted-foreground'
+                          }`}
+                        >
+                          {assignedCategory || 'Unassigned'}
+                        </Badge>
+                        <div className="flex items-center gap-1">
+                          <div className={`w-2 h-2 rounded-full transition-colors duration-300 ${
+                            assignedCategory ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground/50'
+                          }`} />
+                          <span className="text-xs text-muted-foreground">
+                            {assignedCategory ? 'Active' : 'Idle'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Assignment Interface */}
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-muted/30 to-muted/10 p-6">
+              <div className="absolute inset-0 bg-grid-pattern opacity-5" />
+              <div className="relative z-10">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Settings className="w-5 h-5 text-primary" />
+                  </div>
+                  <h3 className="text-lg font-semibold">Domain Assignment Control</h3>
+                </div>
+                
+                <div className="grid gap-4">
+                  {uniqueCategories.map((category, index) => {
+                    const assignedKing = kings.find(k => k.id === categoryAssignments[category]);
+                    const complaintsInCategory = complaints.filter(c => c.category === category).length;
+                    
+                    return (
+                      <div
+                        key={category}
+                        className="group relative overflow-hidden rounded-xl border border-border/50 bg-card/50 hover:bg-card transition-all duration-300 hover:shadow-md"
+                        style={{ animationDelay: `${index * 100}ms` }}
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                        
+                        <div className="relative z-10 p-4">
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex-1 space-y-2">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors duration-300">
+                                  <Award className="w-4 h-4 text-primary" />
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold capitalize text-base">{category}</h4>
+                                  <p className="text-sm text-muted-foreground">
+                                    {complaintsInCategory} complaints • {assignedKing ? `Ruled by ${assignedKing.username}` : 'No ruler assigned'}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-3">
+                              {assignedKing && (
+                                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
+                                  <UserCheck className="w-3 h-3 text-primary" />
+                                  <span className="text-xs font-medium text-primary">{assignedKing.email}</span>
+                                </div>
+                              )}
+                              
+                              <Select
+                                value={categoryAssignments[category] || 'unassigned'}
+                                onValueChange={(kingId) => handleKingAssignment(category, kingId)}
+                                disabled={isAssigning === category}
+                              >
+                                <SelectTrigger className="w-[200px] h-9 bg-card/80 hover:bg-card transition-colors duration-200">
+                                  {isAssigning === category ? (
+                                    <div className="flex items-center gap-2">
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                      <span className="text-sm">Assigning...</span>
+                                    </div>
+                                  ) : (
+                                    <SelectValue placeholder="Choose King" />
+                                  )}
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem 
+                                    value="unassigned"
+                                    className="text-muted-foreground hover:text-foreground transition-colors duration-200"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-2 h-2 rounded-full bg-muted-foreground/50" />
+                                      Unassigned
+                                    </div>
+                                  </SelectItem>
+                                  {kings.map(king => (
+                                    <SelectItem 
+                                      key={king.id} 
+                                      value={king.id}
+                                      className="hover:bg-primary/5 transition-colors duration-200"
                                     >
-                                        <SelectTrigger className="w-[280px]">
-                                            <SelectValue placeholder="Select a King" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="unassigned">Unassigned</SelectItem>
-                                            {kings.map(king => (
-                                                <SelectItem key={king.id} value={king.id}>
-                                                    {king.email}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </CardContent>
+                                      <div className="flex items-center gap-2">
+                                        <Crown className="w-3 h-3 text-primary" />
+                                        <div>
+                                          <span className="font-medium">{king.username}</span>
+                                          <span className="text-xs text-muted-foreground ml-2">
+                                            {king.email}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          
+                          {/* Progress indicator */}
+                          <div className="mt-3 space-y-2">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">Category Load</span>
+                              <span className="font-medium">{complaintsInCategory} complaints</span>
+                            </div>
+                            <div className="w-full bg-muted/30 rounded-full h-1.5 overflow-hidden">
+                              <div 
+                                className="h-full bg-gradient-to-r from-primary/60 to-primary rounded-full transition-all duration-1000 ease-out"
+                                style={{ 
+                                  width: `${Math.min((complaintsInCategory / Math.max(...uniqueCategories.map(cat => complaints.filter(c => c.category === cat).length))) * 100, 100)}%` 
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Stats for King Management */}
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-green-500/10 to-green-600/5 border border-green-500/20 p-4 hover:shadow-lg transition-all duration-300">
+                <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="relative z-10 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-green-500/20">
+                    <UserCheck className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Active Kings</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {Object.keys(categoryAssignments).length}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 p-4 hover:shadow-lg transition-all duration-300">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="relative z-10 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-500/20">
+                    <Shield className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Domains</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {uniqueCategories.length}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 p-4 hover:shadow-lg transition-all duration-300">
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="relative z-10 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-purple-500/20">
+                    <Activity className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Efficiency</p>
+                    <p className="text-2xl font-bold text-purple-600">
+                      {Math.round((Object.keys(categoryAssignments).length / uniqueCategories.length) * 100)}%
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
         </Card>
       )}
 
+      {/* Custom Styles for Grid Pattern */}
+      <style jsx>{`
+        .bg-grid-pattern {
+          background-image: radial-gradient(circle at 1px 1px, hsl(var(--muted-foreground)) 1px, transparent 0);
+          background-size: 20px 20px;
+        }
+      `}</style>
     </div>
   );
 };
