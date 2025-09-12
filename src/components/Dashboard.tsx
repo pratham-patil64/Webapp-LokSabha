@@ -1,28 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
 import {
-  AlertTriangle, CheckCircle, Clock,
-  FileText, BarChart3, Loader2, Smile, Frown, Meh, KeyRound
+  AlertTriangle, CheckCircle, Clock, FileText, BarChart3, 
+  Loader2, Smile, Frown, Meh, KeyRound, Crown, Shield, 
+  Activity, ChevronRight, UserCheck, MapPin, Award, Settings
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { collection, onSnapshot, query, Timestamp, where, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import Sentiment from 'sentiment';
 import { useAuth } from '@/contexts/AuthContext';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 
 // --- INTERFACES & TYPES ---
-interface Complaint { id: string; category: string; createdAt: Timestamp; description: string; imageUrl?: string; location: { latitude: number; longitude: number }; severity: 'low' | 'medium' | 'high'; status: 'Pending' | 'in progress' | 'Resolved' | 'Not BMC' | 'Acknowledged'; userId: string; userName: string; priorityScore?: number; }
+interface Complaint {
+  id: string;
+  category: string;
+  createdAt: Timestamp;
+  description: string;
+  imageUrl?: string;
+  location: { latitude: number; longitude: number };
+  severity: 'low' | 'medium' | 'high';
+  status: 'Pending' | 'in progress' | 'Resolved' | 'Not BMC' | 'Acknowledged';
+  userId: string;
+  userName: string;
+  priorityScore?: number;
+}
 interface CommunityPost { id: string; text: string; createdAt: Timestamp; userName: string; }
 interface KingUser { id: string; email: string; username: string; domain?: { genre: string; } }
 
+const sentimentAnalyzer = new Sentiment();
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
   const [complaints, setComplaints] = useState<Complaint[]>([]);
@@ -31,6 +48,8 @@ const Dashboard: React.FC = () => {
   const [categoryAssignments, setCategoryAssignments] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [isAssigning, setIsAssigning] = useState<string | null>(null);
+  const [selectedKingCard, setSelectedKingCard] = useState<string | null>(null);
+  
   const [dashboardStats, setDashboardStats] = useState({
     totalComplaints: 0, openComplaints: 0, inProgress: 0, resolved: 0, criticalCount: 0,
   });
@@ -85,7 +104,6 @@ const Dashboard: React.FC = () => {
     return acc;
   }, [] as { name: string; count: number }[]);
   
-  const sentimentAnalyzer = new Sentiment();
   const sentimentAnalysis = posts.reduce((acc, post) => {
     const result = sentimentAnalyzer.analyze(post.text);
     if (result.score > 0) acc.positive++;
@@ -103,7 +121,7 @@ const Dashboard: React.FC = () => {
   const uniqueCategories = [...new Set(complaints.map(c => c.category).filter(Boolean))];
 
   const handleKingAssignment = async (category: string, kingId: string) => {
-    setIsAssigning(category);
+      setIsAssigning(category);
       try {
           const currentKingId = categoryAssignments[category];
           if (currentKingId && currentKingId !== kingId) {
@@ -127,95 +145,139 @@ const Dashboard: React.FC = () => {
       }
   };
   
-  const StatCard = ({ title, value, icon: Icon, color = "primary" }: { title: string; value: string | number; icon: React.ElementType; color?: string; }) => ( <Card className="hover:shadow-lg transition-shadow"> <CardContent className="p-6"> <div className="flex items-center justify-between"> <div> <p className="text-sm font-medium text-muted-foreground">{title}</p> <p className="text-3xl font-bold">{value}</p> </div> <div className={`p-3 rounded-full bg-${color}/10`}> <Icon className={`w-6 h-6 text-${color}`} /> </div> </div> </CardContent> </Card> );
+  if (loading) {
+    return <div className="flex justify-center items-center h-screen"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
+  }
 
-  if (loading) return <div className="flex justify-center items-center h-screen"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+  // --- UI HELPER COMPONENTS ---
+  const StatCard = ({ title, value, icon: Icon, color = "primary", description }: { title: string; value: string | number; icon: React.ElementType; color?: string; description?: string; }) => (
+    <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500 hover:-translate-y-2">
+      <CardContent className="p-6 relative z-10">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-muted-foreground group-hover:text-foreground">{title}</p>
+            <p className="text-3xl font-bold tracking-tight">{value}</p>
+            {description && <p className="text-xs text-muted-foreground/70">{description}</p>}
+          </div>
+          <div className="relative p-4 rounded-2xl bg-primary/10 group-hover:bg-primary/20 transition-all duration-300 group-hover:scale-110">
+            <Icon className={`w-7 h-7 text-primary`} />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-card/95 backdrop-blur-sm border border-border/50 rounded-lg p-3 shadow-xl">
+          <p className="font-semibold text-foreground capitalize">{label}</p>
+          <p className="text-primary font-medium">Count: {payload[0].value}</p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
-    <div className="space-y-6">
-      {/* The page header and navigation are now handled by Layout.tsx */}
+    <div className="space-y-8 min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      {/* The main page header is now in Layout.tsx */}
       
       {/* Stats Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Total Complaints" value={dashboardStats.totalComplaints} icon={FileText} color="primary" />
-        <StatCard title="Pending" value={dashboardStats.openComplaints} icon={AlertTriangle} color="destructive" />
-        <StatCard title="In Progress" value={dashboardStats.inProgress} icon={Clock} color="warning" />
-        <StatCard title="Resolved" value={dashboardStats.resolved} icon={CheckCircle} color="success" />
+        <StatCard title="Total Complaints" value={dashboardStats.totalComplaints} icon={FileText} description="All registered complaints" />
+        <StatCard title="Pending" value={dashboardStats.openComplaints} icon={AlertTriangle} description="Awaiting attention" />
+        <StatCard title="In Progress" value={dashboardStats.inProgress} icon={Clock} description="Being processed" />
+        <StatCard title="Resolved" value={dashboardStats.resolved} icon={CheckCircle} description="Successfully completed" />
       </div>
 
       {/* Charts Grid */}
-      <div className="grid gap-6 lg:grid-cols-5">
-        <Card className="card-professional lg:col-span-3">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><BarChart3 className="w-5 h-5" />Complaints by Category</CardTitle>
-          </CardHeader>
+      <div className="grid gap-8 lg:grid-cols-5">
+        <Card className="group lg:col-span-3 border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-2xl transition-all duration-500">
+          <CardHeader><CardTitle>Complaints Distribution</CardTitle><CardDescription>Category-wise breakdown of all complaints</CardDescription></CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={complaintsByCategory}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="name" tick={{ fontSize: 12 }} angle={-45} textAnchor="end" height={80} tickFormatter={(value) => typeof value === 'string' ? value.charAt(0).toUpperCase() + value.slice(1) : value} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}/>
-                <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+            <ResponsiveContainer width="100%" height={350}>
+              <BarChart data={complaintsByCategory} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                <defs><linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.8} /><stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.3} /></linearGradient></defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} angle={-45} textAnchor="end" height={80} tickFormatter={(value) => value.charAt(0).toUpperCase() + value.slice(1)} />
+                <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="count" fill="url(#barGradient)" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
-
-        <Card className="card-professional lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Community Sentiment</CardTitle>
-            <CardDescription>Analysis of community posts</CardDescription>
-          </CardHeader>
+        <Card className="group lg:col-span-2 border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-2xl transition-all duration-500">
+          <CardHeader><CardTitle>Community Pulse</CardTitle><CardDescription>Real-time sentiment analysis</CardDescription></CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-               <PieChart>
-                <Pie data={sentimentChartData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={12}>
+            <ResponsiveContainer width="100%" height={320}>
+              <PieChart>
+                <Pie data={sentimentChartData} cx="50%" cy="50%" outerRadius={90} innerRadius={40} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={12}>
                   {sentimentChartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                 </Pie>
-                <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}/>
+                <Tooltip content={<CustomTooltip />} />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
        
+      {/* Sentiment Stats */}
       <div className="grid gap-6 md:grid-cols-3">
-          <StatCard title="Positive Posts" value={sentimentAnalysis.positive} icon={Smile} color="success" />
-          <StatCard title="Neutral Posts" value={sentimentAnalysis.neutral} icon={Meh} color="gray" />
-          <StatCard title="Negative Posts" value={sentimentAnalysis.negative} icon={Frown} color="destructive" />
+        <StatCard title="Positive Sentiment" value={sentimentAnalysis.positive} icon={Smile} description="Happy community members" />
+        <StatCard title="Neutral Sentiment" value={sentimentAnalysis.neutral} icon={Meh} description="Balanced feedback" />
+        <StatCard title="Negative Sentiment" value={sentimentAnalysis.negative} icon={Frown} description="Concerns raised" />
       </div>
         
-      {/* King Access Portal */}
+      {/* Royal Command Center (King Access Portal) */}
       {user?.role === 'god' && (
-        <Card className="card-professional">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2"><KeyRound className="w-5 h-5" />King Access Portal</CardTitle>
-                <CardDescription>Assign complaint categories to King administrators.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader><TableRow><TableHead>Category</TableHead><TableHead>Assigned King</TableHead></TableRow></TableHeader>
-                    <TableBody>
-                        {uniqueCategories.map(category => (
-                            <TableRow key={category}>
-                                <TableCell className="font-medium capitalize">{category}</TableCell>
-                                <TableCell>
-                                    <Select value={categoryAssignments[category] || 'unassigned'} onValueChange={(kingId) => handleKingAssignment(category, kingId)} disabled={isAssigning === category}>
-                                        <SelectTrigger className="w-[280px]"><SelectValue placeholder="Select a King" /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="unassigned">Unassigned</SelectItem>
-                                            {kings.map(king => (<SelectItem key={king.id} value={king.id}>{king.email}</SelectItem>))}
-                                        </SelectContent>
-                                    </Select>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </CardContent>
+        <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-card via-card to-primary/5">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold">Royal Command Center</CardTitle>
+            <CardDescription>Assign and manage your kingdom's administrative domains</CardDescription>
+          </CardHeader>
+          <CardContent className="relative z-10 space-y-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {kings.map(king => {
+                const assignedCategory = Object.keys(categoryAssignments).find(cat => categoryAssignments[cat] === king.id);
+                const isSelected = selectedKingCard === king.id;
+                return (
+                  <div key={king.id} onClick={() => setSelectedKingCard(isSelected ? null : king.id)} className={`group p-4 space-y-3 rounded-2xl border transition-all duration-500 cursor-pointer ${isSelected ? 'border-primary/50 bg-primary/5 shadow-lg scale-105' : 'border-border/50 hover:border-primary/30 hover:shadow-md'}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-xl ${assignedCategory ? 'bg-primary/20 text-primary' : 'bg-muted/50 text-muted-foreground'}`}><Crown className="w-4 h-4" /></div>
+                        <div><p className="font-semibold text-sm">{king.username}</p><p className="text-xs text-muted-foreground truncate max-w-[140px]">{king.email}</p></div>
+                      </div>
+                      <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${isSelected ? 'rotate-90' : 'group-hover:translate-x-1'}`} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="relative overflow-hidden rounded-2xl bg-muted/30 p-6">
+              <div className="flex items-center gap-3 mb-6"><Settings className="w-5 h-5 text-primary" /><h3 className="text-lg font-semibold">Domain Assignment Control</h3></div>
+              <div className="grid gap-4">
+                {uniqueCategories.map(category => (
+                  <div key={category} className="p-4 rounded-xl border border-border/50 bg-card/50">
+                    <div className="flex items-center justify-between gap-4">
+                      <h4 className="font-semibold capitalize text-base">{category}</h4>
+                      <Select value={categoryAssignments[category] || 'unassigned'} onValueChange={(kingId) => handleKingAssignment(category, kingId)} disabled={isAssigning === category}>
+                        <SelectTrigger className="w-[200px] h-9"><SelectValue placeholder="Choose King" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="unassigned">Unassigned</SelectItem>
+                          {kings.map(king => <SelectItem key={king.id} value={king.id}>{king.username}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
         </Card>
       )}
+      <style jsx>{`.bg-grid-pattern { background-image: radial-gradient(circle at 1px 1px, hsl(var(--muted-foreground)) 1px, transparent 0); background-size: 20px 20px; }`}</style>
     </div>
   );
 };

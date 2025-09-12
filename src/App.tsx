@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
-// Page Imports
+// Page Imports - Corrected Paths
 import Login from "@/components/Login";
 import Dashboard from "@/components/Dashboard";
 import ComplaintTable from "@/components/ComplaintTable";
@@ -82,3 +82,4 @@ const App = () => (
 );
 
 export default App;
+

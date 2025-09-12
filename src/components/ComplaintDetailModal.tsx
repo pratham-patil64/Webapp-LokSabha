@@ -2,7 +2,7 @@ import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Calendar, MapPin, User, Clock, AlertTriangle, Image as ImageIcon } from 'lucide-react';
+import { Calendar, MapPin, User, AlertTriangle, Image as ImageIcon, CheckCircle } from 'lucide-react';
 import { Complaint } from './ComplaintTable'; // Import from ComplaintTable
 
 interface ComplaintDetailModalProps {
@@ -20,10 +20,14 @@ const ComplaintDetailModal: React.FC<ComplaintDetailModalProps> = ({
 
   const getSeverityBadgeClass = (severity: string) => {
     switch (severity?.toLowerCase()) {
-      case 'high': return 'status-high';
-      case 'medium': return 'status-medium';
-      case 'low': return 'status-low';
-      default: return 'status-low';
+      case 'high':
+        return 'bg-red-500/20 text-red-500 hover:bg-red-500/30 border border-red-500/30';
+      case 'medium':
+        return 'bg-orange-500/20 text-orange-500 hover:bg-orange-500/30 border border-orange-500/30';
+      case 'low':
+        return 'bg-yellow-500/20 text-yellow-500 hover:bg-yellow-500/30 border border-yellow-500/30';
+      default:
+        return 'bg-gray-500/20 text-gray-500 hover:bg-gray-500/30 border border-gray-500/30';
     }
   };
 
@@ -109,19 +113,19 @@ const ComplaintDetailModal: React.FC<ComplaintDetailModalProps> = ({
             <div className="space-y-4">
               <div className="space-y-2">
                 <h4 className="font-medium text-foreground flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  Reported By
+                </h4>
+                <p className="text-muted-foreground">{complaint.userName}</p>
+              </div>
+               <div className="space-y-2">
+                <h4 className="font-medium text-foreground flex items-center gap-2">
                   <MapPin className="w-4 h-4" />
                   Location
                 </h4>
                 <p className="text-muted-foreground">
                     {complaint.location ? `Lat: ${complaint.location.latitude.toFixed(5)}, Lon: ${complaint.location.longitude.toFixed(5)}` : "Not specified"}
                 </p>
-              </div>
-              <div className="space-y-2">
-                <h4 className="font-medium text-foreground flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  Reported By
-                </h4>
-                <p className="text-muted-foreground">{complaint.userName}</p>
               </div>
             </div>
             <div className="space-y-4">
@@ -134,6 +138,17 @@ const ComplaintDetailModal: React.FC<ComplaintDetailModalProps> = ({
                   {formatTimestamp(complaint.createdAt)}
                 </p>
               </div>
+              {complaint.resolvedAt && (
+                <div className="space-y-2">
+                  <h4 className="font-medium text-foreground flex items-center gap-2 text-green-600">
+                    <CheckCircle className="w-4 h-4" />
+                    Resolved On
+                  </h4>
+                  <p className="text-muted-foreground text-sm">
+                    {formatTimestamp(complaint.resolvedAt)}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
