@@ -5,16 +5,17 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { 
-  Search, Filter, Download, 
-  ArrowUpDown, ArrowUp, ArrowDown, Loader2 
+import {
+  Search, Filter, Download,
+  ArrowUpDown, ArrowUp, ArrowDown, Loader2
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import ComplaintDetailModal from '@/components/ComplaintDetailModal';
 import { db } from '../../firebase';
 import { collection, onSnapshot, query, where, doc, getDoc, Timestamp, updateDoc } from 'firebase/firestore';
 
-// --- INTERFACE (deduplicated and corrected) ---
+// --- INTERFACE (Resolved) ---
+// Added the 'supporters' field for the new priority score calculation.
 export interface Complaint {
   id: string;
   category: string;
@@ -28,11 +29,29 @@ export interface Complaint {
   status: 'Pending' | 'in progress' | 'Resolved' | 'Not BMC' | 'Acknowledged';
   userId: string;
   userName: string;
+  supporters?: string[]; // For crowd-sourced priority
   priorityScore?: number;
 }
 
 type SortField = keyof Complaint | 'priorityScore';
 type SortOrder = 'asc' | 'desc';
+
+// --- Advanced Priority Score Configuration (from new pull) ---
+const categoryWeights: { [key: string]: number } = {
+  'water supply': 5,
+  'sanitation': 4,
+  'lighting': 3,
+  'street maintance': 2,
+  'others': 1,
+};
+
+const severityWeights = {
+  'high': 30,
+  'medium': 15,
+  'low': 5,
+};
+
+const CROWD_WEIGHT = 5; // Points per supporter
 
 const ComplaintTable: React.FC = () => {
   const { user } = useAuth();
@@ -69,16 +88,27 @@ const ComplaintTable: React.FC = () => {
       if (!complaintsQuery) return setLoading(false);
 
       const unsubscribe = onSnapshot(complaintsQuery, (snapshot) => {
+        // --- MERGE RESOLUTION ---
+        // The more advanced priority score logic from the new pull has been adopted.
         const complaintsData = snapshot.docs.map(d => {
             const data = d.data();
-            // Using friend's improved priority logic: sets to 0 if resolved
-            const priorityScore = data.status === 'Resolved' 
-              ? 0 
-              : Math.min(100, Math.round(
-                  ({ 'high': 3, 'medium': 2, 'low': 1 }[data.severity] || 1) * 20 + 
-                  (new Date().getTime() - data.createdAt.toDate().getTime()) / (3600000 * 24) * 5
-                ));
-            return { id: d.id, ...data, priorityScore } as Complaint;
+            let priorityScore = 0;
+            
+            if (data.status !== 'Resolved') {
+              const categoryWeight = categoryWeights[data.category?.toLowerCase()] || categoryWeights['others'];
+              const hazardScore = severityWeights[data.severity] || 0;
+              let baseScore = (categoryWeight * 5) + hazardScore;
+              const crowdScore = (data.supporters?.length || 0) * CROWD_WEIGHT;
+              const hoursSinceCreation = data.createdAt ? (new Date().getTime() - data.createdAt.toDate().getTime()) / 3600000 : 0;
+              const stalenessScore = Math.floor(hoursSinceCreation / 24) * 2;
+              priorityScore = baseScore + crowdScore + stalenessScore;
+            }
+
+            return {
+                id: d.id,
+                ...data,
+                priorityScore: Math.min(100, Math.round(priorityScore))
+            } as Complaint;
         });
         setComplaints(complaintsData);
         setLoading(false);
@@ -88,8 +118,6 @@ const ComplaintTable: React.FC = () => {
     fetchComplaints();
   }, [user]);
   
-  // --- MERGED LOGIC ---
-  // Combines your `resolvedBy` logic with your friend's `resolvedAt` logic
   const handleStatusChange = async (complaintId: string, newStatus: Complaint['status']) => {
       if (!user) return;
       setIsUpdating(complaintId);
@@ -98,8 +126,8 @@ const ComplaintTable: React.FC = () => {
           const updateData: { status: string; resolvedBy?: string; resolvedAt?: Timestamp } = { status: newStatus };
           
           if (newStatus === 'Resolved') {
-              updateData.resolvedBy = user.uid; // Crucial for leaderboard
-              updateData.resolvedAt = Timestamp.now(); // Crucial for leaderboard & table
+              updateData.resolvedBy = user.uid;
+              updateData.resolvedAt = Timestamp.now();
           }
           
           await updateDoc(complaintRef, updateData as any);
@@ -118,7 +146,6 @@ const ComplaintTable: React.FC = () => {
       (severityFilter === 'all' || c.severity === severityFilter)
     );
 
-    // Using friend's improved sorting logic that handles dates and nulls
     filtered.sort((a, b) => {
         const aVal = a[sortField];
         const bVal = b[sortField];
@@ -142,7 +169,6 @@ const ComplaintTable: React.FC = () => {
     setSortField(field);
   };
   
-  // Using friend's more specific badge colors
   const getSeverityBadgeClass = (s: string) => ({ 'high': 'bg-red-500/20 text-red-500', 'medium': 'bg-orange-500/20 text-orange-500', 'low': 'bg-yellow-500/20 text-yellow-500' }[s] || 'bg-gray-500/20');
   const getStatusBadgeClass = (s: string) => ({ 'pending': 'status-open', 'in progress': 'status-in-progress', 'resolved': 'status-resolved', 'acknowledged': 'bg-blue-500/20 text-blue-400', 'not bmc': 'bg-gray-500/20 text-gray-400' }[s] || '');
   
@@ -215,5 +241,6 @@ const ComplaintTable: React.FC = () => {
     </div>
   );
 };
+
 export default ComplaintTable;
 
